@@ -41,6 +41,11 @@ class Car():
 
         plot.addItem(self.plotItem)
 
+    def getFilteredData(self, relDistMax):
+            mask = (self.lap.telem["RelativeDistance"] <= relDistMax)
+            filteredData = self.lap.telem.slice_by_mask(mask)
+    
+            return filteredData
 
 class RaceOverview():
     def __init__(self, cars, app):
@@ -82,7 +87,7 @@ class RaceOverview():
 
         self.drawCars()
 
-        self.plot.show
+        self.plot.show()
 
 
     def drawCars(self):
@@ -93,25 +98,24 @@ class RaceOverview():
         for car in self.cars:
             car.pos = car.getPos(self.time)
 
+if __name__ == "__main__":
+
+    app = QApplication(sys.argv)
 
 
+    qualiLaps = pickQualiLaps(getSession(2025, "China"), 3)
+    fastestV = getFastest(qualiLaps, "PIA")
+    fastestL = getFastest(qualiLaps, "NOR")
 
-app = QApplication(sys.argv)
+    car1 = Car("PIA", "orange", SingleLap(fastestV))
+    car2 = Car("NOR", "green", SingleLap(fastestL))
 
+    race = RaceOverview([car1, car2], app)
+    race.getMaxTime()
+    race.drawTrack()
 
-qualiLaps = pickQualiLaps(getSession(2025, "China"), 3)
-fastestV = getFastest(qualiLaps, "VER")
-fastestL = getFastest(qualiLaps, "LEC")
+    timer = QTimer()
+    timer.timeout.connect(race.updateTrack)
+    timer.start(int(DT * 1000)) #DT is seconds
 
-car1 = Car("PIA", "orange", SingleLap(fastestV))
-car2 = Car("NOR", "green", SingleLap(fastestL))
-
-race = RaceOverview([car1, car2], app)
-race.getMaxTime()
-race.drawTrack()
-
-timer = QTimer()
-timer.timeout.connect(race.updateTrack)
-timer.start(int(DT * 1000)) #DT is seconds
-
-sys.exit(app.exec())
+    sys.exit(app.exec())
