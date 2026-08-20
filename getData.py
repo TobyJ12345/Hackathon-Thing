@@ -30,6 +30,7 @@ class SingleLap:
         self.lap = lap
 
         self.telem = lap.get_telemetry()
+        self.telem.resample_channels("10ms")
 
     def createTrackData(self, interp=10):
         x = np.array(self.telem["X"])
@@ -44,15 +45,14 @@ class SingleLap:
         return interpX, interpY
 
     def getTimeData(self, time):
-        times = np.array(self.telem["Time"])
-        times = times.astype("int64") 
-        xs = np.array(self.telem["X"])
-        ys = np.array(self.telem["Y"])
+        times = np.asarray(self.telem["Time"], dtype=np.int64)
+        xs = np.asarray(self.telem["X"], dtype=float)
+        ys = np.asarray(self.telem["Y"], dtype=float)
 
         x = np.interp(time, times, xs)
         y = np.interp(time, times, ys)
 
-        return float(x), float(y)
+        return x, y
 
     def getDriverData(self):
         speed = self.telem["Speed"]

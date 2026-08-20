@@ -6,8 +6,9 @@ from PyQt6.QtCore import QTimer
 
 from getData import SingleLap, getSession, pickQualiLaps, getFastest
 
-DT = 0.05
+DT = 0.01
 NANOFACTOR = 10 ** 9
+
 
 
 class Car():
@@ -16,18 +17,27 @@ class Car():
         self.colour = colour
         self.lap = lap
         self.pos = self.getPos(0)
+        self.plotItem = None
 
     def getPos(self, time):
         return self.lap.getTimeData(time)
 
     def drawSelf(self, plot):
-        self.plotItem = pg.ScatterPlotItem(
+        if self.plotItem == None:
+            self.plotItem = pg.ScatterPlotItem(
+                x=[self.pos[0]],
+                y=[self.pos[1]],
+                size=8,
+                brush=[pg.mkBrush(self.colour)],
+                pen=pg.mkPen("white", width=1)
+            )
+        self.plotItem.setData(
             x=[self.pos[0]],
             y=[self.pos[1]],
             size=8,
             brush=[pg.mkBrush(self.colour)],
-            pen=pg.mkPen("white", width=1)
-        )
+            pen=pg.mkPen("white", width=1))
+
 
         plot.addItem(self.plotItem)
 
@@ -43,7 +53,7 @@ class RaceOverview():
         self.time = 0
         self.maxTime = self.getMaxTime()
         self.paused = False
-        self.speed = 1 * NANOFACTOR
+        self.speed = 4 * NANOFACTOR
 
     def getMaxTime(self):
         return max(self.cars, key= lambda x: max(x.lap.telem["Time"]))
@@ -74,7 +84,7 @@ class RaceOverview():
 
         self.plot.show
 
-        
+
     def drawCars(self):
         for car in self.cars:
             car.pos = car.drawSelf(self.plot)
@@ -89,12 +99,12 @@ class RaceOverview():
 app = QApplication(sys.argv)
 
 
-qualiLaps = pickQualiLaps(getSession(2024, "Monaco"), 3)
+qualiLaps = pickQualiLaps(getSession(2025, "China"), 3)
 fastestV = getFastest(qualiLaps, "VER")
 fastestL = getFastest(qualiLaps, "LEC")
 
-car1 = Car("VER", "blue", SingleLap(fastestV))
-car2 = Car("LEC", "red", SingleLap(fastestL))
+car1 = Car("PIA", "orange", SingleLap(fastestV))
+car2 = Car("NOR", "green", SingleLap(fastestL))
 
 race = RaceOverview([car1, car2], app)
 race.getMaxTime()
