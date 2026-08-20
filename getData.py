@@ -1,4 +1,6 @@
 import fastf1
+import numpy as np
+
 
 #Setup cache
 fastf1.Cache.enable_cache('./cacheFolder')
@@ -20,17 +22,37 @@ def getFastest(laps, driver):
 
     return fastest
 
+def lerp(x1, x2, t):
+    return t*x1 + (1-t)*x2
+
 class SingleLap:
     def __init__(self, lap):
         self.lap = lap
 
         self.telem = lap.get_telemetry()
 
-    def createTrackData(self):
-        x = self.telem["X"]
-        y = self.telem["Y"]
+    def createTrackData(self, interp=10):
+        x = np.array(self.telem["X"])
+        y = np.array(self.telem["Y"])
 
-        return x, y
+        #Interpolating between points to create more complete track data
+
+        new_indices = np.linspace(0, len(x) - 1, interp * len(x))
+        interpX = np.interp(new_indices, np.linspace(0, len(x) - 1, len(x)), x)
+        interpY = np.interp(new_indices, np.linspace(0, len(x) - 1, len(x)), y)
+        
+        return interpX, interpY
+
+    def getTimeData(self, time):
+        times = np.array(self.telem["Time"])
+        times = times.astype("int64") 
+        xs = np.array(self.telem["X"])
+        ys = np.array(self.telem["Y"])
+
+        x = np.interp(time, times, xs)
+        y = np.interp(time, times, ys)
+
+        return float(x), float(y)
 
     def getDriverData(self):
         speed = self.telem["Speed"]
@@ -44,5 +66,7 @@ class SingleLap:
 
 qualiLaps = pickQualiLaps(getSession(2024, "Monaco"), 3)
 fastest = getFastest(qualiLaps, "VER")
-telem = fastest.get_telemetry()
-print(telem.columns.tolist())
+
+fastLap = SingleLap(fastest)
+
+print(fastLap.createTrackData())
