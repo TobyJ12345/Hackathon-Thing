@@ -4,22 +4,23 @@ import pyqtgraph as pg
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QTimer
 
-from getData import SingleLap, getSession, pickQualiLaps, getFastest
-from dashboard import Car
-
-class Graph():
-    def __init__(self, app, dataType, cars : Car):
+class F1Graph():
+    def __init__(self, app, dataType, cars):
         self.app = app
         self.dataType = dataType
         self.cars = cars
+        
 
     def plotGraph(self):
+
         self.plot = pg.PlotWidget()
 
         self.plot.setWindowTitle(f"Comparison of {self.dataType}")
 
+        self.lines = {}
+
         for car in self.cars:
-            car.line = self.plot.plot(
+            self.lines[car] = self.plot.plot(
             pen=pg.mkPen(car.colour, width=2),
             name= f"{car.name} {self.dataType}"
             )
@@ -33,12 +34,12 @@ class Graph():
             x = np.array(filteredData["RelativeDistance"])
             y = np.array(filteredData[self.dataType])
 
-            car.line.setData(x,y)
+            self.lines[car].setData(x,y)
 
         self.plot.show()
 
 
-
+'''
 app = QApplication(sys.argv)
 
 qualiLaps = pickQualiLaps(getSession(2025, "China"), 3)
@@ -59,4 +60,4 @@ RPMGraph.plotGraph()
 RPMGraph.updateGraph(1)
 
 sys.exit(app.exec())
-
+'''

@@ -6,11 +6,6 @@ from PyQt6.QtCore import QTimer
 
 from getData import SingleLap, getSession, pickQualiLaps, getFastest
 
-DT = 0.01
-NANOFACTOR = 10 ** 9
-
-
-
 class Car():
     def __init__(self, name, colour, lap : SingleLap):
         self.name = name
@@ -53,15 +48,12 @@ class RaceOverview():
         self.app = app
         self.plot = pg.PlotWidget()
         self.plot.setWindowTitle("Track Overview")
-
-        #State Variables
         self.time = 0
-        self.maxTime = self.getMaxTime()
-        self.paused = False
-        self.speed = 4 * NANOFACTOR
+        #State Variables
+        
 
     def getMaxTime(self):
-        return max(self.cars, key= lambda x: max(x.lap.telem["Time"]))
+        return max(max(self.cars, key= lambda x: max(x.lap.telem["Time"])).lap.telem["Time"])
 
     def drawTrack(self):
         lap = self.cars[0].lap 
@@ -77,11 +69,8 @@ class RaceOverview():
         self.plot.show()
 
 
-    def updateTrack(self):
-        if self.paused:
-            return
-
-        self.time += DT * self.speed
+    def updateTrack(self, time):
+        self.time = time
 
         self.updateCars()
 
@@ -97,25 +86,5 @@ class RaceOverview():
     def updateCars(self):
         for car in self.cars:
             car.pos = car.getPos(self.time)
+        
 
-if __name__ == "__main__":
-
-    app = QApplication(sys.argv)
-
-
-    qualiLaps = pickQualiLaps(getSession(2025, "China"), 3)
-    fastestV = getFastest(qualiLaps, "PIA")
-    fastestL = getFastest(qualiLaps, "NOR")
-
-    car1 = Car("PIA", "orange", SingleLap(fastestV))
-    car2 = Car("NOR", "green", SingleLap(fastestL))
-
-    race = RaceOverview([car1, car2], app)
-    race.getMaxTime()
-    race.drawTrack()
-
-    timer = QTimer()
-    timer.timeout.connect(race.updateTrack)
-    timer.start(int(DT * 1000)) #DT is seconds
-
-    sys.exit(app.exec())
