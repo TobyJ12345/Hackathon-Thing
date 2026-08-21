@@ -76,8 +76,6 @@ class RaceOverview():
 
         self.drawCars()
 
-        self.plot.show()
-
 
     def drawCars(self):
         for car in self.cars:

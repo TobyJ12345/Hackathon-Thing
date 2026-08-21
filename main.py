@@ -45,7 +45,6 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
 
-
     qualiLaps = pickQualiLaps(getSession(2025, "China"), 3)
     fastestV = getFastest(qualiLaps, "PIA")
     fastestL = getFastest(qualiLaps, "NOR")

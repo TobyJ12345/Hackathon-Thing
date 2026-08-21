@@ -36,7 +36,6 @@ class F1Graph():
 
             self.lines[car].setData(x,y)
 
-        self.plot.show()
 
 
 '''
