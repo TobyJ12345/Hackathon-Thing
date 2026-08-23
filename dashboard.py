@@ -1,90 +1,181 @@
 import sys
-import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QTimer
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSlider, QLabel
+from PyQt6.QtCore import Qt, QTimer, QElapsedTimer
 
 from getData import SingleLap, getSession, pickQualiLaps, getFastest
+from graphs import F1Graph
+from dashboard import Car, RaceOverview
 
-NANOFACTOR = 10 ** 9
+class Controls(QWidget):
+    def __init__(self, utils):
+        super().__init__()
+        self.utils = utils
 
-class Car():
-    def __init__(self, name, colour, lap : SingleLap):
-        self.name = name
-        self.colour = colour
-        self.lap = lap
-        self.pos = self.getPos(0)
-        self.plotItem = None
+        self.playButton = QPushButton("▶")
+        self.slowButton = QPushButton("0.5×")
+        self.normalButton = QPushButton("1×")
+        self.fastButton = QPushButton("2×")
+        self.fasterButton = QPushButton("4×")
 
-    def getPos(self, time):
-        return self.lap.getTimeData(time)
+        self.currentLabel = QLabel("00:00.000")
+        self.durationLabel = QLabel(self.formatTime(utils.duration))
 
-    def drawSelf(self, plot):
-        if self.plotItem == None:
-            self.plotItem = pg.ScatterPlotItem(
-                x=[self.pos[0]],
-                y=[self.pos[1]],
-                size=8,
-                brush=[pg.mkBrush(self.colour)],
-                pen=pg.mkPen("white", width=1)
-            )
-        self.plotItem.setData(
-            x=[self.pos[0]],
-            y=[self.pos[1]],
-            size=8,
-            brush=[pg.mkBrush(self.colour)],
-            pen=pg.mkPen("white", width=1))
+        self.timeline = QSlider(Qt.Orientation.Horizontal)
+        self.timeline.setMinimum(0)
+        self.timeline.setMaximum(int(utils.duration * 1000))
+        self.timeline.setValue(0)
+
+        layout = QVBoxLayout()
+        controls = QHBoxLayout()
+
+        controls.addWidget(self.playButton)
+        controls.addWidget(self.slowButton)
+        controls.addWidget(self.normalButton)
+        controls.addWidget(self.fastButton)
+        controls.addWidget(self.fasterButton)
+
+        timelineLayout = QHBoxLayout()
+        timelineLayout.addWidget(self.currentLabel)
+        timelineLayout.addWidget(self.timeline)
+        timelineLayout.addWidget(self.durationLabel)
+
+        layout.addLayout(controls)
+        layout.addLayout(timelineLayout)
+        self.setLayout(layout)
+
+        self.playButton.clicked.connect(self.togglePlayback)
+        self.slowButton.clicked.connect(lambda: self.utils.setSpeed(0.5))
+        self.normalButton.clicked.connect(lambda: self.utils.setSpeed(1.0))
+        self.fastButton.clicked.connect(lambda: self.utils.setSpeed(2.0))
+        self.fasterButton.clicked.connect(lambda: self.utils.setSpeed(4.0))
+        self.timeline.valueChanged.connect(self.seek)
+
+        self.utils.addCallback(self.updateTimeline)
+
+    def togglePlayback(self):
+        self.utils.toggle()
+
+        if self.utils.paused:
+            self.playButton.setText("▶")
+        else:
+            self.playButton.setText("⏸")
+
+    def seek(self, value):
+        self.utils.seek(value / 1000.0)
+
+    def updateTimeline(self, time):
+        self.timeline.blockSignals(True)
+        self.timeline.setValue(int(time * 1000))
+        self.timeline.blockSignals(False)
+        self.currentLabel.setText(self.formatTime(time))
+
+    def formatTime(self, seconds):
+        minutes = int(seconds // 60)
+        seconds = seconds % 60
+        return f"{minutes:02d}:{seconds:06.3f}"
 
 
-        plot.addItem(self.plotItem)
+class Utils:
+    def __init__(self, race, graphs, duration):
+        self.race = race
+        self.graphs = graphs
+        self.time = 0.0
+        self.duration = duration
+        self.paused = True
+        self.speed = 1.0
 
-    def getFilteredData(self, relDistMax):
-            mask = (self.lap.telem["RelativeDistance"] <= relDistMax)
-            filteredData = self.lap.telem.slice_by_mask(mask)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.updateLoop)
+
+        self.clock = QElapsedTimer()
+        self.callbacks = []
+
+    def createAll(self):
+        self.race.drawTrack()
+
+        for graph in self.graphs:
+            graph.plotGraph()
+
+        self.timer.start(16)
+        self.updateObjects()
+
+    def updateLoop(self):
+        if not self.paused:
+            dt = self.clock.restart() / 1000.0
+            self.time += dt * self.speed
+
+            if self.time >= self.duration:
+                self.time = self.duration
+                self.pause()
+
+        self.updateObjects()
+
+    def updateObjects(self):
+        self.race.updateTrack(self.time)
+
+        normalizedTime = self.time / self.duration if self.duration > 0 else 0
+
+        for graph in self.graphs:
+            graph.updateGraph(normalizedTime)
+
+        for callback in self.callbacks:
+            callback(self.time)
+
+    def play(self):
+        if self.time >= self.duration:
+            self.time = 0.0
+
+        self.paused = False
+        self.clock.start()
+
+    def pause(self):
+        self.paused = True
+
+    def toggle(self):
+        if self.paused:
+            self.play()
+        else:
+            self.pause()
+
+    def setSpeed(self, speed):
+        self.speed = speed
+
+    def seek(self, time):
+        self.time = max(0.0, min(time, self.duration))
+        self.updateObjects()
+
+    def addCallback(self, callback):
+        self.callbacks.append(callback)
+
+def createVis(season, raceName, session, driver1, driver2, colour1, colour2, stats):
+    app = QApplication(sys.argv)
     
-            return filteredData
+    qualiLaps = pickQualiLaps(getSession(season, raceName), session)
+    fastestV = getFastest(qualiLaps, driver1)
+    fastestL = getFastest(qualiLaps, driver2)
+    
+    car1 = Car(driver1, colour1, SingleLap(fastestV))
+    car2 = Car(driver2, colour2, SingleLap(fastestL))
 
-class RaceOverview():
-    def __init__(self, cars, app):
-        self.cars = cars
-        self.app = app
-        self.plot = pg.PlotWidget()
-        self.plot.setWindowTitle("Track Overview")
-        self.time = 0
-        #State Variables
-        
+    cars = [car1, car2]
 
-    def getMaxTime(self):
-        return max(max(self.cars, key= lambda x: max(x.lap.telem["Time"])).lap.telem["Time"])
+    race = RaceOverview(cars, app)
 
-    def drawTrack(self):
-        lap = self.cars[0].lap 
+    graphs = []
+    for stat in stats:
+        statGraph = F1Graph(app, stat, cars)
+        graphs.append(statGraph)
 
-        track_x, track_y = lap.createTrackData()
+    duration = race.getMaxTime().total_seconds()
 
-        self.plot.plot(
-            track_x,
-            track_y,
-            pen=pg.mkPen("#dddddd", width=4)
-        )
+    utils = Utils(race, graphs, duration)
 
-        self.plot.show()
+    controls = Controls(utils)
+    controls.setWindowTitle("Controls")
+    controls.resize(700, 120)
+    controls.show()
 
+    utils.createAll()
 
-    def updateTrack(self, time):
-        self.time = time * NANOFACTOR
-
-        self.updateCars()
-
-        self.drawCars()
-
-
-    def drawCars(self):
-        for car in self.cars:
-            car.pos = car.drawSelf(self.plot)
-
-    def updateCars(self):
-        for car in self.cars:
-            car.pos = car.getPos(self.time)
-        
-
+    sys.exit(app.exec())
