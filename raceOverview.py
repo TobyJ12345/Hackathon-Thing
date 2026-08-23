@@ -36,6 +36,8 @@ class Car():
                 brush=[pg.mkBrush(self.colour)],
                 pen=pg.mkPen("white", width=1)
             )
+
+            plot.addItem(self.plotItem)
         self.plotItem.setData(
             x=[self.pos[0]],
             y=[self.pos[1]],
@@ -88,8 +90,10 @@ class RaceOverview():
         for i, car in enumerate(self.cars):
             self.timeTexts[car.name].setPos(
                 x,
-                y - i * 350
+                y - i * 500
             )
+
+        self.drawCars()
 
         self.plot.show()
 
