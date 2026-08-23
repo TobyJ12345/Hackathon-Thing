@@ -62,11 +62,3 @@ class SingleLap:
         drs = self.telem["DRS"]
 
         return speed, rpm, throttle, brake, drs
-   
-
-qualiLaps = pickQualiLaps(getSession(2024, "Monaco"), 3)
-fastest = getFastest(qualiLaps, "VER")
-
-fastLap = SingleLap(fastest)
-
-print(fastLap.createTrackData())

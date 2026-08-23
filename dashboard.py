@@ -6,6 +6,8 @@ from PyQt6.QtCore import QTimer
 
 from getData import SingleLap, getSession, pickQualiLaps, getFastest
 
+NANOFACTOR = 10 ** 9
+
 class Car():
     def __init__(self, name, colour, lap : SingleLap):
         self.name = name
@@ -70,7 +72,7 @@ class RaceOverview():
 
 
     def updateTrack(self, time):
-        self.time = time
+        self.time = time * NANOFACTOR
 
         self.updateCars()
 

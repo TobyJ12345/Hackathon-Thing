@@ -36,8 +36,6 @@ class F1Graph():
 
             self.lines[car].setData(x,y)
 
-
-
 '''
 app = QApplication(sys.argv)
 
