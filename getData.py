@@ -17,7 +17,9 @@ def pickQualiLaps(session, qualifyingSession=3):
     return laps.split_qualifying_sessions()[qualifyingSession-1]
 
 def getFastest(laps, driver):
+
     driverLaps = laps.pick_drivers(driver)
+    driverLaps = driverLaps.pick_accurate()
     fastest = driverLaps.pick_fastest()
 
     return fastest

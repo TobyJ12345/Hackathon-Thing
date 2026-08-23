@@ -5,7 +5,7 @@ from PyQt6.QtCore import Qt, QTimer, QElapsedTimer
 
 from getData import SingleLap, getSession, pickQualiLaps, getFastest
 from graphs import F1Graph
-from dashboard import Car, RaceOverview
+from raceOverview import Car, RaceOverview
 
 class Controls(QWidget):
     def __init__(self, utils):
@@ -148,17 +148,18 @@ class Utils:
     def addCallback(self, callback):
         self.callbacks.append(callback)
 
-def createVis(season, raceName, session, driver1, driver2, colour1, colour2, stats):
+def createVis(season, raceName, session, drivers, colours, stats):
     app = QApplication(sys.argv)
     
     qualiLaps = pickQualiLaps(getSession(season, raceName), session)
-    fastestV = getFastest(qualiLaps, driver1)
-    fastestL = getFastest(qualiLaps, driver2)
-    
-    car1 = Car(driver1, colour1, SingleLap(fastestV))
-    car2 = Car(driver2, colour2, SingleLap(fastestL))
 
-    cars = [car1, car2]
+    laps = []
+    for driver in drivers:
+        laps.append(getFastest(qualiLaps, driver))
+
+    cars = []
+    for i in range(len(drivers)):
+        cars.append(Car(drivers[i], colours[i], SingleLap(laps[i])))
 
     race = RaceOverview(cars, app)
 
@@ -166,6 +167,8 @@ def createVis(season, raceName, session, driver1, driver2, colour1, colour2, sta
     for stat in stats:
         statGraph = F1Graph(app, stat, cars)
         graphs.append(statGraph)
+
+    print(cars, drivers, laps)
 
     duration = race.getMaxTime().total_seconds()
 

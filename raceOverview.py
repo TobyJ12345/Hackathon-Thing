@@ -8,6 +8,13 @@ from getData import SingleLap, getSession, pickQualiLaps, getFastest
 
 NANOFACTOR = 10 ** 9
 
+def formatTime(time):
+    totalSeconds = time.total_seconds()
+    minutes = int(totalSeconds // 60)
+    seconds = totalSeconds % 60
+
+    return f"{minutes}:{seconds:06.3f}"
+
 class Car():
     def __init__(self, name, colour, lap : SingleLap):
         self.name = name
@@ -15,6 +22,7 @@ class Car():
         self.lap = lap
         self.pos = self.getPos(0)
         self.plotItem = None
+        self.laptime = lap.lap["LapTime"]
 
     def getPos(self, time):
         return self.lap.getTimeData(time)
@@ -36,8 +44,6 @@ class Car():
             pen=pg.mkPen("white", width=1))
 
 
-        plot.addItem(self.plotItem)
-
     def getFilteredData(self, relDistMax):
             mask = (self.lap.telem["RelativeDistance"] <= relDistMax)
             filteredData = self.lap.telem.slice_by_mask(mask)
@@ -51,7 +57,15 @@ class RaceOverview():
         self.plot = pg.PlotWidget()
         self.plot.setWindowTitle("Track Overview")
         self.time = 0
-        #State Variables
+
+        self.timeTexts = {}
+
+        for car in self.cars:
+            self.timeTexts[car.name] = pg.TextItem(
+                f"{car.name}: {formatTime(car.laptime)}",
+                color=car.colour
+            )
+            self.plot.addItem(self.timeTexts[car.name])
         
 
     def getMaxTime(self):
@@ -68,6 +82,15 @@ class RaceOverview():
             pen=pg.mkPen("#dddddd", width=4)
         )
 
+        x = min(track_x)
+        y = max(track_y)
+
+        for i, car in enumerate(self.cars):
+            self.timeTexts[car.name].setPos(
+                x,
+                y - i * 350
+            )
+
         self.plot.show()
 
 
@@ -81,7 +104,7 @@ class RaceOverview():
 
     def drawCars(self):
         for car in self.cars:
-            car.pos = car.drawSelf(self.plot)
+            car.drawSelf(self.plot)
 
     def updateCars(self):
         for car in self.cars:
